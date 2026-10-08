@@ -1,0 +1,21 @@
+{
+  "name": "bountio-protocol",
+  "version": "1.0.0",
+  "description": "Bountio Protocol on BOT Chain Mainnet",
+  "type": "module",
+  "scripts": {
+    "build": "cd \"Bountio Frontend\" && npm install && npm run build",
+    "vercel-build": "cd \"Bountio Frontend\" && npm install && npm run build",
+    "compile": "node script/compile.mjs",
+    "test": "node test/bountio.test.mjs",
+    "deploy": "node script/deploy.mjs",
+    "server": "node server/index.mjs"
+  },
+  "dependencies": {
+    "ethers": "^6.13.5",
+    "solc": "^0.8.28"
+  },
+  "devDependencies": {
+    "hardhat": "^3.18.1"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "network": "BOT Chain Mainnet",
+  "chainId": 677,
+  "rpc": "https://rpc.botchain.ai",
+  "contractAddress": "0x53a6922a6f604c9bd6f558e17a27c0e5194d215e",
+  "deploymentTxHash": "0xe8b9104046a9adc9a249349d185a9d650865353ece146bd856dd91a810a70eae",
+  "deploymentBlock": 25978749,
+  "deploymentGasUsed": 1865423,
+  "deployer": "0x34a19B30d9edD62424802d323E81c25599A9f02e",
+  "adjudicator": "0x34a19B30d9edD62424802d323E81c25599A9f02e",
+  "mission1CreationTx": "0xde967e8ee65ef6507f7fb6d6a1d00483c4cfbd366ee32f32340af445a9d2f08b",
+  "mission1Id": 1,
+  "mission1Pool": "0.02 BOT",
+  "deployedAt": "2026-10-08T14:08:24.367Z"
+}
