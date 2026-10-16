@@ -11,5 +11,11 @@
   "mission1CreationTx": "0xde967e8ee65ef6507f7fb6d6a1d00483c4cfbd366ee32f32340af445a9d2f08b",
   "mission1Id": 1,
   "mission1Pool": "0.02 BOT",
-  "deployedAt": "2026-10-08T14:08:24.367Z"
+  "deployedAt": "2026-10-08T14:08:24.367Z",
+  "mission2CreationTx": "0xbef8aa0aebc285561db00c8e081820f1225ac9a56335ce14c0253ae67c2b8332",
+  "mission2Id": 2,
+  "mission2Pool": "0.02 BOT",
+  "mission2MaxPlayers": 500,
+  "mission2EndTime": "2027-04-14T21:59:05.000Z",
+  "activeMissionId": 2
 }

@@ -134,7 +134,7 @@ function Nav({
   );
 }
 
-function Hero({ setPage, mission1 }: { setPage: (page: Page) => void; mission1: MissionData | null }) {
+function Hero({ setPage, mission }: { setPage: (page: Page) => void; mission: MissionData | null }) {
   return (
     <section className="hero section-shell">
       <div className="hero-copy">
@@ -142,7 +142,7 @@ function Hero({ setPage, mission1 }: { setPage: (page: Page) => void; mission1: 
           <span className="eyebrow-light">
             <Asterisk size={13} /> ON-CHAIN COMPETITION
           </span>
-          <span>NO. 001</span>
+          <span>NO. {mission?.number ?? '002'}</span>
         </div>
         <h1>
           Play.<br />
@@ -171,7 +171,7 @@ function Hero({ setPage, mission1 }: { setPage: (page: Page) => void; mission1: 
       <div className="hero-visual">
         <MissionArtwork />
         <div className="visual-caption">
-          <span>MISSION / 001: {mission1?.prize ?? '0.02 BOT'} POOL</span>
+          <span>MISSION / {mission?.number ?? '002'}: {mission?.prize ?? '0.02 BOT'} POOL</span>
           <span>
             VERIFIABLE BY DESIGN <ArrowRight size={13} />
           </span>
@@ -421,7 +421,7 @@ function Home({
 }) {
   return (
     <>
-      <Hero setPage={setPage} mission1={missions[0] || null} />
+      <Hero setPage={setPage} mission={missions[1] || missions[0] || null} />
       <ConceptStrip />
       <section className="featured section-shell">
         <SectionHeading
@@ -493,11 +493,13 @@ function Arena({
   account,
   onSubmitProof,
   hasEntered,
+  activeMission,
 }: {
   playerStatus: PlayerStatusData | null;
   account: string | null;
   onSubmitProof: (moves: number[], resource: number, timeSeconds: number) => void;
   hasEntered: boolean;
+  activeMission?: MissionData | null;
 }) {
   const [selected, setSelected] = useState<number[]>([0, 4, 8]);
   const [movesCount, setMovesCount] = useState<number>(3);
@@ -540,9 +542,9 @@ function Arena({
         <div>
           <div className="mini-label">
             <span />
-            LIVE MISSION / 01
+            LIVE MISSION / {activeMission?.number ?? '02'}
           </div>
-          <h2>Strategy Grid</h2>
+          <h2>{activeMission?.title ?? 'Resource Run'}</h2>
           <p>
             Complete the tactical path with optimal moves while maintaining resource threshold above 50. Restricted sectors must not be entered.
           </p>
@@ -888,14 +890,25 @@ function MissionModal({
           </div>
         )}
 
+        {mission.status === 'ENDED' && (
+          <div className="notice-box error" style={{ marginTop: 12 }}>
+            <AlertCircle size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />
+            This mission staking window has ended. Please join active Mission 02!
+          </div>
+        )}
+
         <button
           className="button-primary modal-cta"
           onClick={onEnter}
-          disabled={isEntering || (hasEntered && mission.number === '01')}
+          disabled={isEntering || mission.status === 'ENDED' || (!hasEntered && mission.status !== 'OPEN')}
           style={{ marginTop: 16 }}
         >
           {isEntering ? (
             'Staking native BOT on-chain...'
+          ) : mission.status === 'ENDED' ? (
+            <>
+              Mission ended <span>Window closed</span>
+            </>
           ) : hasEntered ? (
             <>
               Already entered <span>Go to Arena</span>
@@ -1153,7 +1166,8 @@ function App() {
   const [claimTxHash, setClaimTxHash] = useState<string | null>(null);
   const [walletError, setWalletError] = useState<string | null>(null);
   const [adjudicationData, setAdjudicationData] = useState<any>(null);
-  const [playerStatus, setPlayerStatus] = useState<PlayerStatusData | null>(null);
+  const [playerStatuses, setPlayerStatuses] = useState<Record<number, PlayerStatusData>>({});
+  const [activeMissionId, setActiveMissionId] = useState<number>(2);
 
   // Mainnet Missions State
   const [missions, setMissions] = useState<MissionData[]>([
@@ -1165,7 +1179,7 @@ function App() {
       entry: '0.005 BOT',
       prize: '0.02 BOT',
       players: '0 / 50',
-      status: 'OPEN',
+      status: 'ENDED',
       accent: 'orange',
       rawEntryFee: 5000000000000000n,
       rawRewardPool: 20000000000000000n,
@@ -1177,13 +1191,13 @@ function App() {
       category: 'OPTIMIZATION / SPEED',
       difficulty: 'MEDIUM',
       entry: '0.005 BOT',
-      prize: 'Awaiting network data',
-      players: '0 / 100',
-      status: 'AWAITING NETWORK DATA',
+      prize: '0.02 BOT',
+      players: '0 / 500',
+      status: 'OPEN',
       accent: 'sand',
       rawEntryFee: 5000000000000000n,
-      rawRewardPool: 0n,
-      exists: false,
+      rawRewardPool: 20000000000000000n,
+      exists: true,
     },
     {
       number: '03',
@@ -1201,25 +1215,34 @@ function App() {
     },
   ]);
 
-  // Load real mission from BOT Chain Mainnet
+  // Load real missions from BOT Chain Mainnet
   const loadMainnetData = useCallback(async () => {
     try {
-      const m1 = await fetchMainnetMission(1);
-      if (m1) {
-        setMissions((current) => [m1, current[1], current[2]]);
-      }
+      const [m1, m2] = await Promise.all([
+        fetchMainnetMission(1),
+        fetchMainnetMission(2),
+      ]);
+      setMissions((current) => [
+        m1 || current[0],
+        m2 || current[1],
+        current[2],
+      ]);
     } catch (e) {
-      console.warn('Failed loading mission 1 from mainnet:', e);
+      console.warn('Failed loading missions from mainnet:', e);
     }
   }, []);
 
   // Load player status
   const loadPlayerStatus = useCallback(async (addr: string) => {
     try {
-      const p = await fetchPlayerStatus(addr, 1);
-      if (p) {
-        setPlayerStatus(p);
-      }
+      const [p1, p2] = await Promise.all([
+        fetchPlayerStatus(addr, 1),
+        fetchPlayerStatus(addr, 2),
+      ]);
+      const map: Record<number, PlayerStatusData> = {};
+      if (p1) map[1] = p1;
+      if (p2) map[2] = p2;
+      setPlayerStatuses(map);
     } catch (e) {
       console.warn('Failed loading player status:', e);
     }
@@ -1306,15 +1329,24 @@ function App() {
   const handleDisconnect = () => {
     setAccount(null);
     setBalance(null);
-    setPlayerStatus(null);
+    setPlayerStatuses({});
     setWalletOpen(false);
   };
 
   // Enter mission transaction
-  const handleEnterMission = async () => {
+  const handleEnterMission = async (targetMission?: MissionData) => {
     setWalletError(null);
     if (!account) {
       handleConnectWallet();
+      return;
+    }
+
+    const mToEnter = targetMission || selectedMission || missions[1];
+    const missionId = BigInt(mToEnter?.number ? parseInt(mToEnter.number, 10) : activeMissionId);
+    const entryFee = mToEnter?.rawEntryFee ?? ethers.parseEther('0.005');
+
+    if (mToEnter?.status === 'ENDED') {
+      setWalletError(`Mission ${mToEnter.number} staking window has ended. Please join active Mission 02!`);
       return;
     }
 
@@ -1325,9 +1357,6 @@ function App() {
       const signer = await provider.getSigner();
       const contract = new ethers.Contract(CONFIG.CONTRACT_ADDRESS, CONFIG.ABI, signer);
 
-      const missionId = 1n;
-      const entryFee = missions[0]?.rawEntryFee ?? ethers.parseEther('0.005');
-
       console.log(`Entering mission ${missionId} with fee ${ethers.formatEther(entryFee)} BOT...`);
       const tx = await contract.enterMission(missionId, { value: entryFee });
       setEntryTxHash(tx.hash);
@@ -1335,6 +1364,7 @@ function App() {
       const receipt = await tx.wait();
       console.log('Entered mission confirmed on BOT Chain:', receipt);
 
+      setActiveMissionId(Number(missionId));
       await updateBalance(account);
       await loadPlayerStatus(account);
       await loadMainnetData();
@@ -1364,12 +1394,12 @@ function App() {
 
     try {
       // 1. Submit proof to backend AI service
-      console.log('Submitting proof to AI Adjudication service...');
+      console.log(`Submitting proof to AI Adjudication service for mission ${activeMissionId}...`);
       const res = await fetch('/api/adjudicate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          missionId: 1,
+          missionId: activeMissionId,
           player: account,
           moves,
           resource,
@@ -1436,7 +1466,9 @@ function App() {
     }
   };
 
-  const hasEnteredMission1 = Boolean(playerStatus?.entered);
+  const activeMission = missions.find(m => Number(m.number) === activeMissionId) || missions[1] || missions[0];
+  const activePlayerStatus = playerStatuses[activeMissionId] || null;
+  const hasEnteredActive = Boolean(activePlayerStatus?.entered);
 
   return (
     <div className="app-shell">
@@ -1468,15 +1500,16 @@ function App() {
 
       {page === 'arena' && (
         <Arena
-          playerStatus={playerStatus}
+          playerStatus={activePlayerStatus}
           account={account}
           onSubmitProof={handleSubmitProof}
-          hasEntered={hasEnteredMission1}
+          hasEntered={hasEnteredActive}
+          activeMission={activeMission}
         />
       )}
 
       {page === 'leaderboard' && (
-        <Leaderboard account={account} playerStatus={playerStatus} />
+        <Leaderboard account={account} playerStatus={activePlayerStatus} />
       )}
 
       {page === 'how' && <HowItWorks />}
@@ -1538,15 +1571,18 @@ function App() {
             setWalletError(null);
           }}
           onEnter={() => {
-            if (hasEnteredMission1) {
+            const mId = parseInt(selectedMission.number, 10);
+            const isEntered = Boolean(playerStatuses[mId]?.entered);
+            if (isEntered) {
+              setActiveMissionId(mId);
               setSelectedMission(null);
               setPage('arena');
             } else {
-              handleEnterMission();
+              handleEnterMission(selectedMission);
             }
           }}
           account={account}
-          hasEntered={hasEnteredMission1}
+          hasEntered={Boolean(playerStatuses[parseInt(selectedMission.number, 10)]?.entered)}
           isEntering={isEntering}
           txHash={entryTxHash}
           errorMessage={walletError}

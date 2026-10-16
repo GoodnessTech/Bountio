@@ -45,22 +45,45 @@ export function getReadContract(): ethers.Contract {
   return new ethers.Contract(CONFIG.CONTRACT_ADDRESS, CONFIG.ABI, getReadProvider());
 }
 
-export async function fetchMainnetMission(missionId: number = 1): Promise<MissionData | null> {
+const MISSION_CONFIGS: Record<number, { title: string; category: string; difficulty: string; accent: string }> = {
+  1: { title: 'Strategy Grid', category: 'TACTICAL / TURN-BASED', difficulty: 'HARD', accent: 'orange' },
+  2: { title: 'Resource Run', category: 'OPTIMIZATION / SPEED', difficulty: 'MEDIUM', accent: 'sand' },
+  3: { title: 'Logic Arena', category: 'PUZZLE / PRECISION', difficulty: 'EXPERT', accent: 'red' },
+};
+
+export async function fetchMainnetMission(missionId: number = 2): Promise<MissionData | null> {
+  const meta = MISSION_CONFIGS[missionId] || {
+    title: `Mission ${missionId}`,
+    category: 'TACTICAL CHALLENGE',
+    difficulty: 'MEDIUM',
+    accent: 'sand',
+  };
+
   try {
     const contract = getReadContract();
     const m = await contract.getMission(missionId);
     if (!m.exists) return null;
 
+    const isEnded = Number(m.endTime) > 0 && Math.floor(Date.now() / 1000) > Number(m.endTime);
+    let status = 'INACTIVE';
+    if (isEnded) {
+      status = 'ENDED';
+    } else if (Number(m.status) === 1) {
+      status = 'OPEN';
+    } else if (Number(m.status) === 2) {
+      status = 'CLOSED';
+    }
+
     return {
       number: String(missionId).padStart(2, '0'),
-      title: 'Strategy Grid',
-      category: 'TACTICAL / TURN-BASED',
-      difficulty: 'HARD',
+      title: meta.title,
+      category: meta.category,
+      difficulty: meta.difficulty,
       entry: `${ethers.formatEther(m.entryFee)} BOT`,
       prize: `${ethers.formatEther(m.rewardPool)} BOT`,
       players: `${Number(m.currentPlayers)} / ${Number(m.maxPlayers)}`,
-      status: Number(m.status) === 1 ? 'OPEN' : Number(m.status) === 2 ? 'CLOSED' : 'INACTIVE',
-      accent: 'orange',
+      status,
+      accent: meta.accent,
       rawEntryFee: m.entryFee,
       rawRewardPool: m.rewardPool,
       exists: true,
@@ -71,16 +94,27 @@ export async function fetchMainnetMission(missionId: number = 1): Promise<Missio
       const res = await fetch(`/api/mission/${missionId}`);
       const data = await res.json();
       if (!data.exists) return null;
+
+      const isEnded = Number(data.endTime) > 0 && Math.floor(Date.now() / 1000) > Number(data.endTime);
+      let status = 'INACTIVE';
+      if (isEnded) {
+        status = 'ENDED';
+      } else if (data.status === 1) {
+        status = 'OPEN';
+      } else if (data.status === 2) {
+        status = 'CLOSED';
+      }
+
       return {
         number: String(missionId).padStart(2, '0'),
-        title: 'Strategy Grid',
-        category: 'TACTICAL / TURN-BASED',
-        difficulty: 'HARD',
+        title: meta.title,
+        category: meta.category,
+        difficulty: meta.difficulty,
         entry: `${data.entryFeeFormatted} BOT`,
         prize: `${data.rewardPoolFormatted} BOT`,
         players: `${data.currentPlayers} / ${data.maxPlayers}`,
-        status: data.status === 1 ? 'OPEN' : data.status === 2 ? 'CLOSED' : 'INACTIVE',
-        accent: 'orange',
+        status,
+        accent: meta.accent,
         rawEntryFee: BigInt(data.entryFee),
         rawRewardPool: BigInt(data.rewardPool),
         exists: true,
